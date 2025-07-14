@@ -1,0 +1,2167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Bitcoin Trading Assistant</title>
+  <style>
+    :root {
+      --primary: #ff9800;
+      --success: #26a69a;
+      --danger: #ef5350;
+      --bg: #111;
+      --panel: #222;
+      --text: #eee;
+      --disabled: #666;
+    }
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
+    }
+    
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    #header {
+      padding: 12px;
+      background: var(--panel);
+      border-bottom: 1px solid #333;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    #header h1 {
+      margin: 0;
+      font-size: 1.2rem;
+      color: var(--primary);
+    }
+    
+    #timeframe-selector {
+      display: flex;
+      gap: 5px;
+      overflow-x: auto;
+      padding: 5px 0;
+    }
+    
+    .timeframe-btn {
+      background: #333;
+      border: none;
+      color: #ccc;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    
+    .timeframe-btn.active {
+      background: var(--primary);
+      color: #111;
+      font-weight: bold;
+    }
+    
+    .timeframe-btn.more {
+      background: #444;
+      position: relative;
+    }
+    
+    .more-dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: var(--panel);
+      border: 1px solid #444;
+      border-radius: 4px;
+      z-index: 100;
+      min-width: 100px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .more-dropdown.show {
+      display: block;
+    }
+    
+    .more-dropdown-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    
+    .more-dropdown-item:hover {
+      background: #444;
+    }
+    
+    #content {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+    }
+    
+    @media (min-width: 768px) {
+      #content {
+        flex-direction: row;
+      }
+    }
+    
+    #price-display {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    
+    .price-levels {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .level-card {
+      background: #333;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    
+    .level-card h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      color: var(--primary);
+    }
+    
+    .level-value {
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+    
+    .support {
+      color: var(--success);
+    }
+    
+    .resistance {
+      color: var(--danger);
+    }
+    
+    #sidebar {
+      width: 100%;
+      overflow-y: auto;
+      background: var(--panel);
+      padding: 12px;
+      border-top: 1px solid #333;
+    }
+    
+    @media (min-width: 768px) {
+      #sidebar {
+        width: 320px;
+        border-top: none;
+        border-left: 1px solid #333;
+      }
+    }
+    
+    .progress-container {
+      margin: 15px 0;
+    }
+    
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+      font-size: 0.9rem;
+    }
+    
+    .progress-bar {
+      height: 8px;
+      background: #333;
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: var(--primary);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    
+    .progress-steps {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+    }
+    
+    .progress-step {
+      flex: 1;
+      height: 100%;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .progress-step.completed {
+      background: rgba(255, 152, 0, 0.2);
+    }
+    
+    .step {
+      background: #333;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      position: relative;
+    }
+    
+    .step.completed {
+      border-left: 4px solid var(--success);
+    }
+    
+    .step.active {
+      border-left: 4px solid var(--primary);
+    }
+    
+    .step h3 {
+      margin: 0 0 8px 0;
+      font-size: 1rem;
+    }
+    
+    .alert {
+      background: rgba(255, 152, 0, 0.2);
+      padding: 8px;
+      margin: 5px 0;
+      border-radius: 3px;
+      font-size: 0.9rem;
+    }
+    
+    .alert.success {
+      background: rgba(38, 166, 154, 0.2);
+    }
+    
+    .alert.danger {
+      background: rgba(239, 83, 80, 0.2);
+    }
+    
+    .checklist {
+      margin: 15px 0;
+    }
+    
+    .checklist-item {
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+    }
+    
+    .checklist-item input {
+      margin-right: 8px;
+    }
+    
+    .input-group {
+      margin-bottom: 10px;
+    }
+    
+    .input-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 0.9rem;
+    }
+    
+    input[type="number"], input[type="text"], select {
+      background: #444;
+      color: white;
+      border: 1px solid #666;
+      padding: 8px;
+      width: 100%;
+      border-radius: 4px;
+    }
+    
+    button {
+      background: var(--primary);
+      color: #111;
+      border: none;
+      padding: 10px 15px;
+      margin-top: 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      width: 100%;
+    }
+    
+    button:disabled {
+      background: var(--disabled);
+      color: #999;
+      cursor: not-allowed;
+    }
+    
+    button.secondary {
+      background: #444;
+      color: var(--text);
+      margin-top: 5px;
+    }
+    
+    #launch-prep {
+      margin-top: 20px;
+    }
+    
+    #launch-prep h3 {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    
+    #launch-conditions {
+      margin-bottom: 15px;
+    }
+    
+    .launch-condition {
+      margin-bottom: 8px;
+      padding: 8px;
+      border-radius: 4px;
+      background: #333;
+      display: flex;
+      align-items: center;
+    }
+    
+    .launch-condition.met {
+      border-left: 3px solid var(--success);
+    }
+    
+    .launch-condition.unmet {
+      border-left: 3px solid var(--danger);
+    }
+    
+    .condition-status {
+      margin-right: 10px;
+      font-weight: bold;
+    }
+    
+    .met .condition-status {
+      color: var(--success);
+    }
+    
+    .unmet .condition-status {
+      color: var(--danger);
+    }
+    
+    #countdown {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin: 10px 0;
+      color: var(--primary);
+      text-align: center;
+    }
+    
+    #confidence-meter {
+      height: 10px;
+      background: #333;
+      border-radius: 5px;
+      margin: 10px 0;
+      overflow: hidden;
+    }
+    
+    #confidence-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--danger), var(--primary), var(--success));
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+    
+    #confidence-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: #999;
+    }
+    
+    #mobile-menu {
+      display: flex;
+      justify-content: space-around;
+      padding: 10px;
+      background: var(--panel);
+      border-top: 1px solid #333;
+    }
+    
+    .mobile-tab {
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    .mobile-tab.active {
+      background: var(--primary);
+      color: #111;
+    }
+    
+    .hidden-mobile {
+      display: none;
+    }
+    
+    @media (min-width: 768px) {
+      #mobile-menu {
+        display: none;
+      }
+      
+      .hidden-mobile {
+        display: block;
+      }
+    }
+    
+    #live-price-container {
+      margin-top: 15px;
+      padding: 10px;
+      background: #333;
+      border-radius: 4px;
+      text-align: center;
+    }
+    
+    #live-price {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+    
+    #live-change {
+      font-size: 0.9rem;
+    }
+    
+    .pulse {
+      animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    
+    #timeframe-analysis {
+      margin-top: 15px;
+    }
+    
+    .timeframe-analysis-item {
+      margin-bottom: 10px;
+      padding: 8px;
+      background: #333;
+      border-radius: 4px;
+    }
+    
+    .timeframe-label {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    
+    .timeframe-signal {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .signal-icon {
+      font-size: 1.2rem;
+    }
+    
+    .positive {
+      color: var(--success);
+    }
+    
+    .negative {
+      color: var(--danger);
+    }
+    
+    .refresh-info {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #999;
+      margin-top: 10px;
+    }
+    
+    /* Trade history styles */
+    #trade-history {
+      margin-top: 20px;
+      background: #333;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    
+    #trade-history h3 {
+      margin-top: 0;
+      color: var(--primary);
+    }
+    
+    .trade-list {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    
+    .trade-item {
+      padding: 10px;
+      margin-bottom: 8px;
+      background: #444;
+      border-radius: 4px;
+      border-left: 4px solid var(--primary);
+    }
+    
+    .trade-item.success {
+      border-left-color: var(--success);
+    }
+    
+    .trade-item.danger {
+      border-left-color: var(--danger);
+    }
+    
+    .trade-header {
+      display: flex;
+      justify-content: space-between;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    
+    .trade-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      font-size: 0.9rem;
+    }
+    
+    .trade-metric {
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    .trade-metric .label {
+      color: #999;
+    }
+    
+    .trade-metric .value {
+      font-weight: bold;
+    }
+    
+    .positive-value {
+      color: var(--success);
+    }
+    
+    .negative-value {
+      color: var(--danger);
+    }
+    
+    /* Performance metrics */
+    .performance-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .metric-card {
+      background: #333;
+      padding: 10px;
+      border-radius: 4px;
+      text-align: center;
+    }
+    
+    .metric-value {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin: 5px 0;
+    }
+    
+    .metric-label {
+      font-size: 0.8rem;
+      color: #999;
+    }
+    
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .modal-content {
+      background: var(--panel);
+      padding: 20px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 400px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .modal-title {
+      margin: 0;
+      color: var(--primary);
+    }
+    
+    .close-modal {
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+    
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .modal-actions button {
+      flex: 1;
+    }
+    
+    /* Action buttons */
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    
+    .action-buttons button {
+      flex: 1;
+    }
+    
+    /* Confidence requirements */
+    #confidence-requirements {
+      display: none;
+      margin-top: 15px;
+      background: #333;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    
+    #confidence-requirements h4 {
+      margin-top: 0;
+      color: var(--primary);
+    }
+    
+    .confidence-checklist {
+      margin-top: 10px;
+    }
+    
+    .confidence-checklist-item {
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+    }
+    
+    .confidence-checklist-item input {
+      margin-right: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="header">
+      <h1>Bitcoin Trading Assistant</h1>
+      <div id="timeframe-selector">
+        <button class="timeframe-btn more" id="more-tf-btn">More
+          <div class="more-dropdown" id="more-dropdown">
+            <div class="more-dropdown-item" data-tf="3d">3D</div>
+            <div class="more-dropdown-item" data-tf="8h">8H</div>
+            <div class="more-dropdown-item" data-tf="6h">6H</div>
+            <div class="more-dropdown-item" data-tf="3h">3H</div>
+            <div class="more-dropdown-item" data-tf="45m">45M</div>
+            <div class="more-dropdown-item" data-tf="5m">5M</div>
+          </div>
+        </button>
+        <button class="timeframe-btn" data-tf="1M">Monthly</button>
+        <button class="timeframe-btn" data-tf="1w">Weekly</button>
+        <button class="timeframe-btn active" data-tf="1d">Daily</button>
+        <button class="timeframe-btn" data-tf="4h">4H</button>
+        <button class="timeframe-btn" data-tf="2h">2H</button>
+        <button class="timeframe-btn" data-tf="1h">1H</button>
+        <button class="timeframe-btn" data-tf="30m">30M</button>
+        <button class="timeframe-btn" data-tf="15m">15M</button>
+      </div>
+    </div>
+    
+    <div id="content">
+      <div id="price-display">
+        <div id="live-price-container" class="pulse">
+          <div id="live-price">Loading...</div>
+          <div id="live-change"></div>
+        </div>
+        
+        <h2>Key Levels for <span id="current-tf">Daily</span> Timeframe</h2>
+        <div class="price-levels" id="price-levels-container">
+          <!-- Levels will be populated here -->
+        </div>
+        
+        <div id="timeframe-analysis">
+          <h3>Multi-Timeframe Analysis</h3>
+          <div id="tf-analysis-results"></div>
+        </div>
+        
+        <div class="refresh-info">
+          Data refreshes every 10 seconds
+        </div>
+      </div>
+      
+      <div id="sidebar" class="hidden-mobile">
+        <div class="progress-container">
+          <div class="progress-label">
+            <span>Trading System Progress</span>
+            <span id="progress-percent">0%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-steps">
+              <div class="progress-step" id="step1-progress"></div>
+              <div class="progress-step" id="step2-progress"></div>
+              <div class="progress-step" id="step3-progress"></div>
+              <div class="progress-step" id="step4-progress"></div>
+              <div class="progress-step" id="step5-progress"></div>
+            </div>
+            <div class="progress-fill" id="progress-bar"></div>
+          </div>
+        </div>
+        
+        <div class="step" id="step1">
+          <h3>1. Trend Analysis</h3>
+          <div id="trend-alert"></div>
+        </div>
+        
+        <div class="step" id="step2">
+          <h3>2. Key Levels</h3>
+          <div id="levels-alert"></div>
+        </div>
+        
+        <div class="step" id="step3">
+          <h3>3. Break of Structure</h3>
+          <div id="bos-alert"></div>
+        </div>
+        
+        <div class="step" id="step4">
+          <h3>4. Entry Confirmation</h3>
+          <div id="entry-alert"></div>
+        </div>
+        
+        <div class="step" id="step5">
+          <h3>5. Risk Management</h3>
+          <div class="checklist">
+            <div class="checklist-item">
+              <input type="checkbox" id="risk1"> Risk only 1-2% of account
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="risk2"> Set stop loss (1% below/above key level)
+            </div>
+            <div class="checklist-item">
+              <input type="checkbox" id="risk3"> 1:2 Risk-Reward ratio
+            </div>
+          </div>
+          
+          <div class="input-group">
+            <label for="account-size">Account Size ($)</label>
+            <input type="number" id="account-size" value="1000">
+          </div>
+          
+          <div class="input-group">
+            <label for="risk-percent">Risk (%)</label>
+            <input type="number" id="risk-percent" value="1" min="0.1" max="5" step="0.1">
+          </div>
+          
+          <div class="input-group">
+            <label>Stop Loss Distance ($)</label>
+            <div id="sl-distance">10.00</div>
+          </div>
+          
+          <div class="input-group">
+            <label>Position Size (BTC)</label>
+            <div id="position-size">0.0100</div>
+          </div>
+          
+          <button id="calculate-btn">Calculate Risk</button>
+        </div>
+        
+        <div id="launch-prep">
+          <h3>Launch Prep</h3>
+          <div id="launch-conditions">
+            <!-- Conditions will be populated here -->
+          </div>
+          <div id="countdown">READY</div>
+          <div id="confidence-meter">
+            <div id="confidence-fill"></div>
+          </div>
+          <div id="confidence-labels">
+            <span>Low</span>
+            <span>Medium</span>
+            <span>High</span>
+          </div>
+          
+          <!-- Confidence Requirements Section -->
+          <div id="confidence-requirements">
+            <h4>Increase Confidence Level</h4>
+            <div class="confidence-checklist">
+              <div class="confidence-checklist-item">
+                <input type="checkbox" id="conf1"> Higher timeframe confirms trend
+              </div>
+              <div class="confidence-checklist-item">
+                <input type="checkbox" id="conf2"> Volume supports the move
+              </div>
+              <div class="confidence-checklist-item">
+                <input type="checkbox" id="conf3"> Clear break of key level
+              </div>
+              <div class="confidence-checklist-item">
+                <input type="checkbox" id="conf4"> No major resistance/support nearby
+              </div>
+              <div class="confidence-checklist-item">
+                <input type="checkbox" id="conf5"> Market sentiment aligns with trade
+              </div>
+            </div>
+          </div>
+          
+          <button id="execute-btn" disabled>EXECUTE TRADE</button>
+        </div>
+        
+        <div id="trade-history">
+          <div class="performance-metrics">
+            <div class="metric-card">
+              <div class="metric-label">Active P/L</div>
+              <div class="metric-value" id="active-pl">$0.00</div>
+              <div class="metric-value" id="active-pl-percent">0%</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Completed P/L</div>
+              <div class="metric-value" id="completed-pl">$0.00</div>
+              <div class="metric-value" id="completed-pl-percent">0%</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Total P/L</div>
+              <div class="metric-value" id="total-pl">$0.00</div>
+              <div class="metric-value" id="total-pl-percent">0%</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Win Rate</div>
+              <div class="metric-value" id="win-rate">0%</div>
+            </div>
+          </div>
+          
+          <div class="action-buttons">
+            <button id="add-trade-btn" class="secondary">Add External Trade</button>
+          </div>
+          
+          <h3>Trade History</h3>
+          <div class="trade-list" id="trade-list">
+            <!-- Trade history will be populated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="mobile-menu">
+      <div class="mobile-tab active" data-tab="levels">Levels</div>
+      <div class="mobile-tab" data-tab="steps">Steps</div>
+      <div class="mobile-tab" data-tab="launch">Launch</div>
+    </div>
+  </div>
+
+  <!-- Add Trade Modal -->
+  <div id="trade-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Add External Trade</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <div id="modal-body">
+        <div class="input-group">
+          <label for="trade-type">Trade Type</label>
+          <select id="trade-type">
+            <option value="long">Long</option>
+            <option value="short">Short</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label for="trade-timeframe">Timeframe</label>
+          <select id="trade-timeframe">
+            <option value="1M">Monthly</option>
+            <option value="1w">Weekly</option>
+            <option value="1d" selected>Daily</option>
+            <option value="4h">4H</option>
+            <option value="2h">2H</option>
+            <option value="1h">1H</option>
+            <option value="30m">30M</option>
+            <option value="15m">15M</option>
+            <option value="3d">3D</option>
+            <option value="8h">8H</option>
+            <option value="6h">6H</option>
+            <option value="3h">3H</option>
+            <option value="45m">45M</option>
+            <option value="5m">5M</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label for="entry-price">Entry Price ($)</label>
+          <input type="number" id="entry-price" step="0.01">
+        </div>
+        <div class="input-group">
+          <label for="exit-price">Exit Price ($)</label>
+          <input type="number" id="exit-price" step="0.01">
+        </div>
+        <div class="input-group">
+          <label for="position-size-input">Position Size (BTC)</label>
+          <input type="number" id="position-size-input" step="0.000001">
+        </div>
+        <div class="input-group">
+          <label for="stop-loss">Stop Loss ($)</label>
+          <input type="number" id="stop-loss" step="0.01">
+        </div>
+        <div class="input-group">
+          <label for="take-profit">Take Profit ($)</label>
+          <input type="number" id="take-profit" step="0.01">
+        </div>
+        <div class="input-group">
+          <label for="entry-time">Entry Time</label>
+          <input type="datetime-local" id="entry-time">
+        </div>
+        <div class="input-group">
+          <label for="exit-time">Exit Time</label>
+          <input type="datetime-local" id="exit-time">
+        </div>
+        <div class="input-group">
+          <label for="trade-status">Status</label>
+          <select id="trade-status">
+            <option value="active">Active</option>
+            <option value="target">Hit Target</option>
+            <option value="stopped">Stopped Out</option>
+            <option value="closed">Closed Manually</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="save-trade-btn">Save Trade</button>
+        <button id="delete-trade-btn" class="danger" style="display: none;">Delete Trade</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Trading System
+    let currentTimeframe = '1d';
+    let candles = {};
+    let ws;
+    let lastPrice = 0;
+    let priceDirection = 0; // 0 = neutral, 1 = up, -1 = down
+    let volume = 0;
+    let refreshInterval;
+    
+    // Data storage
+    let trend = null;
+    let keyLevels = [];
+    let potentialTrades = [];
+    let progress = 0;
+    let confidence = 0;
+    let countdownInterval;
+    let countdown = 5;
+    let launchConditions = [];
+    let tradeHistory = [];
+    let activeTrade = null;
+    let editingTradeId = null;
+    
+    // Initialize the launch conditions
+    function initializeLaunchConditions() {
+      launchConditions = [
+        {
+          id: 'trend-confirmed',
+          description: 'Trend confirmed on primary timeframe',
+          met: false
+        },
+        {
+          id: 'secondary-trend',
+          description: 'At least 2 timeframes show same trend direction',
+          met: false
+        },
+        {
+          id: 'key-levels',
+          description: 'Key support/resistance levels identified',
+          met: false
+        },
+        {
+          id: 'structure-break',
+          description: 'Break of structure detected',
+          met: false
+        },
+        {
+          id: 'retest-confirmed',
+          description: 'Retest of broken level confirmed',
+          met: false
+        },
+        {
+          id: 'risk-calculated',
+          description: 'Risk parameters calculated',
+          met: false
+        },
+        {
+          id: 'confidence-level',
+          description: 'Confidence level > 70%',
+          met: false
+        }
+      ];
+      updateLaunchConditionsDisplay();
+    }
+    
+    // Load trades from localStorage
+    function loadTradesFromStorage() {
+      const savedTrades = localStorage.getItem('tradeHistory');
+      if (savedTrades) {
+        tradeHistory = JSON.parse(savedTrades);
+        tradeHistory.forEach(trade => {
+          if (trade.status === 'active') {
+            activeTrade = trade;
+          }
+        });
+        updateTradeHistoryDisplay();
+        updatePerformanceMetrics();
+      }
+    }
+    
+    // Save trades to localStorage
+    function saveTradesToStorage() {
+      localStorage.setItem('tradeHistory', JSON.stringify(tradeHistory));
+    }
+    
+    // Update the launch conditions display
+    function updateLaunchConditionsDisplay() {
+      const container = document.getElementById('launch-conditions');
+      container.innerHTML = '';
+      
+      launchConditions.forEach(condition => {
+        const conditionEl = document.createElement('div');
+        conditionEl.className = `launch-condition ${condition.met ? 'met' : 'unmet'}`;
+        conditionEl.innerHTML = `
+          <span class="condition-status">${condition.met ? '✓' : '✗'}</span>
+          <span>${condition.description}</span>
+        `;
+        container.appendChild(conditionEl);
+      });
+      
+      // Show confidence requirements if all other conditions are met but confidence is low
+      const allOtherConditionsMet = launchConditions
+        .filter(c => c.id !== 'confidence-level')
+        .every(c => c.met);
+      const confidenceCondition = launchConditions.find(c => c.id === 'confidence-level');
+      
+      if (allOtherConditionsMet && confidence < 70) {
+        document.getElementById('confidence-requirements').style.display = 'block';
+      } else {
+        document.getElementById('confidence-requirements').style.display = 'none';
+      }
+      
+      // Update execute button state
+      const allConditionsMet = launchConditions.every(c => c.met);
+      const allCheckboxesChecked = document.querySelectorAll('.checklist-item input:checked').length === 3;
+      document.getElementById('execute-btn').disabled = !(allConditionsMet && allCheckboxesChecked);
+      
+      // Update progress bar based on conditions
+      updateProgressBar();
+      
+      // Update countdown message based on conditions
+      updateCountdownMessage();
+    }
+    
+    // Update progress bar based on conditions
+    function updateProgressBar() {
+      const allConditionsMet = launchConditions.every(c => c.met);
+      const allCheckboxesChecked = document.querySelectorAll('.checklist-item input:checked').length === 3;
+      
+      // Update step progress indicators
+      document.getElementById('step1-progress').className = `progress-step ${launchConditions[0].met ? 'completed' : ''}`;
+      document.getElementById('step2-progress').className = `progress-step ${launchConditions[2].met ? 'completed' : ''}`;
+      document.getElementById('step3-progress').className = `progress-step ${launchConditions[3].met ? 'completed' : ''}`;
+      document.getElementById('step4-progress').className = `progress-step ${launchConditions[4].met ? 'completed' : ''}`;
+      document.getElementById('step5-progress').className = `progress-step ${launchConditions[5].met ? 'completed' : ''}`;
+      
+      // Only show 100% when all conditions are met and checkboxes are checked
+      const newProgress = (allConditionsMet && allCheckboxesChecked) ? 100 : 0;
+      
+      if (progress !== newProgress) {
+        progress = newProgress;
+        document.getElementById('progress-bar').style.width = `${progress}%`;
+        document.getElementById('progress-percent').textContent = `${progress}%`;
+      }
+    }
+    
+    // Update countdown message based on conditions
+    function updateCountdownMessage() {
+      const countdownEl = document.getElementById('countdown');
+      const allConditionsMet = launchConditions.every(c => c.met);
+      const allCheckboxesChecked = document.querySelectorAll('.checklist-item input:checked').length === 3;
+      const allOtherConditionsMet = launchConditions
+        .filter(c => c.id !== 'confidence-level')
+        .every(c => c.met);
+      
+      if (!allCheckboxesChecked) {
+        countdownEl.textContent = "CHECKLIST INCOMPLETE";
+        countdownEl.style.color = "#ff9800";
+      } else if (!allOtherConditionsMet) {
+        countdownEl.textContent = "CONDITIONS NOT MET";
+        countdownEl.style.color = "#ff9800";
+      } else if (confidence < 70) {
+        countdownEl.textContent = "CONFIDENCE TOO LOW";
+        countdownEl.style.color = "#ff9800";
+      } else if (countdown > 0 && countdown <= 5) {
+        countdownEl.textContent = countdown.toString();
+        countdownEl.style.color = "#26a69a";
+      } else if (countdown <= 0) {
+        countdownEl.textContent = "GO FOR LAUNCH";
+        countdownEl.style.color = "#26a69a";
+      } else {
+        countdownEl.textContent = "READY";
+        countdownEl.style.color = "#26a69a";
+      }
+    }
+    
+    // Timeframe buttons
+    document.querySelectorAll('.timeframe-btn:not(.more)').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        currentTimeframe = this.dataset.tf;
+        document.getElementById('current-tf').textContent = this.textContent;
+        loadData(currentTimeframe);
+      });
+    });
+
+    // More timeframe button
+    document.getElementById('more-tf-btn').addEventListener('click', function(e) {
+      e.stopPropagation(); // Prevent immediate closing
+      document.getElementById('more-dropdown').classList.toggle('show');
+    });
+
+    // More dropdown items
+    document.querySelectorAll('.more-dropdown-item').forEach(item => {
+      item.addEventListener('click', function() {
+        const timeframe = this.dataset.tf;
+        document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('more-tf-btn').classList.add('active');
+        currentTimeframe = timeframe;
+        document.getElementById('current-tf').textContent = timeframe;
+        loadData(currentTimeframe);
+        document.getElementById('more-dropdown').classList.remove('show');
+      });
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function() {
+      document.getElementById('more-dropdown').classList.remove('show');
+    });
+
+    // Mobile tab switching
+    document.querySelectorAll('.mobile-tab').forEach(tab => {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.mobile-tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Hide all sections first
+        document.getElementById('price-display').style.display = 'none';
+        document.getElementById('sidebar').style.display = 'none';
+        
+        // Show selected section
+        if (this.dataset.tab === 'levels') {
+          document.getElementById('price-display').style.display = 'block';
+        } else if (this.dataset.tab === 'steps') {
+          document.getElementById('sidebar').style.display = 'block';
+          document.querySelector('#sidebar .progress-container').scrollIntoView();
+        } else if (this.dataset.tab === 'launch') {
+          document.getElementById('sidebar').style.display = 'block';
+          document.getElementById('launch-prep').scrollIntoView();
+        }
+      });
+    });
+
+    // Initialize with levels view on mobile
+    document.getElementById('sidebar').style.display = 'none';
+
+    // Load data for timeframe
+    function loadData(timeframe) {
+      clearTimeout(refreshInterval);
+      
+      const limit = timeframe.match(/^\d+/)?.[0] ? 
+                   (timeframe.includes('M') ? 24 : 
+                    timeframe.includes('w') ? 52 : 
+                    timeframe.includes('d') ? 90 : 
+                    timeframe.includes('h') ? 90 : 200) : 
+                   (timeframe === '1M' ? 24 : 
+                    timeframe === '1w' ? 52 : 
+                    timeframe === '1d' ? 90 : 
+                    timeframe === '4h' ? 90 : 
+                    timeframe === '2h' ? 120 : 200);
+      
+      // For custom timeframes, we need to use the Binance API format
+      const apiTimeframe = timeframe.length > 2 ? timeframe : timeframe;
+      
+      fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${apiTimeframe}&limit=${limit}`)
+        .then(res => res.json())
+        .then(data => {
+          candles[timeframe] = data.map(d => ({
+            time: Math.floor(d[0] / 1000),
+            open: parseFloat(d[1]),
+            high: parseFloat(d[2]),
+            low: parseFloat(d[3]),
+            close: parseFloat(d[4]),
+            volume: parseFloat(d[5])
+          }));
+
+          // Analyze the data
+          analyzeTrend(timeframe);
+          findKeyLevels(timeframe);
+          detectStructureBreaks(timeframe);
+          
+          // Update UI
+          updateStepUI();
+          startLaunchSequence();
+          analyzeAllTimeframes();
+          displayKeyLevels(timeframe);
+          
+          // Update active trade performance if exists
+          if (activeTrade) {
+            updateActiveTradePerformance();
+          }
+          
+          // Set refresh timer
+          refreshInterval = setTimeout(() => loadData(timeframe), 10000);
+        })
+        .catch(err => {
+          console.error('Error loading data:', err);
+          alert(`Failed to load data for timeframe: ${timeframe}. Please try a standard timeframe.`);
+          // Revert to daily timeframe
+          document.querySelector('.timeframe-btn[data-tf="1d"]').click();
+        });
+    }
+    
+    // Display key levels in the price display area
+    function displayKeyLevels(timeframe) {
+      const container = document.getElementById('price-levels-container');
+      container.innerHTML = '';
+      
+      if (!keyLevels.length) {
+        container.innerHTML = '<p>No key levels found for this timeframe.</p>';
+        return;
+      }
+      
+      // Sort levels by price
+      const sortedLevels = [...keyLevels].sort((a, b) => b.price - a.price);
+      
+      // Group nearby levels
+      const groupedLevels = [];
+      sortedLevels.forEach(level => {
+        const existingGroup = groupedLevels.find(group => 
+          Math.abs(group.price - level.price) < level.price * 0.01
+        );
+        
+        if (existingGroup) {
+          existingGroup.count++;
+          if (level.type === 'support') existingGroup.supports++;
+          else existingGroup.resistances++;
+        } else {
+          groupedLevels.push({
+            price: level.price,
+            type: level.type,
+            count: 1,
+            supports: level.type === 'support' ? 1 : 0,
+            resistances: level.type === 'resistance' ? 1 : 0,
+            timeframe: timeframe
+          });
+        }
+      });
+      
+      // Create cards for each significant level
+      groupedLevels.forEach(level => {
+        const card = document.createElement('div');
+        card.className = 'level-card';
+        
+        let levelType = level.supports > level.resistances ? 'Support' : 'Resistance';
+        if (level.supports === level.resistances) levelType = 'Key Level';
+        
+        card.innerHTML = `
+          <h3>${levelType} Zone</h3>
+          <div class="level-value ${levelType.toLowerCase()}">$${level.price.toFixed(2)}</div>
+          <div>Confirmed ${level.count} times</div>
+          <div>${level.supports} supports / ${level.resistances} resistances</div>
+        `;
+        
+        container.appendChild(card);
+      });
+    }
+    
+    // Analyze all timeframes
+    function analyzeAllTimeframes() {
+      const timeframes = ['1M', '1w', '1d', '4h', '2h', '1h', '30m', '15m', '3d', '8h', '6h', '3h', '45m', '5m'];
+      let html = '';
+      let bullishTimeframes = 0;
+      let bearishTimeframes = 0;
+      
+      timeframes.forEach(tf => {
+        if (!candles[tf]) return;
+        
+        const tfData = candles[tf];
+        const lastCandle = tfData[tfData.length - 1];
+        const prevCandle = tfData[tfData.length - 2];
+        
+        // Simple trend analysis
+        let trendDirection = 'neutral';
+        let trendIcon = '➖';
+        let trendColor = '#ccc';
+        
+        if (lastCandle.close > prevCandle.close) {
+          trendDirection = 'bullish';
+          trendIcon = '📈';
+          trendColor = '#26a69a';
+          bullishTimeframes++;
+        } else if (lastCandle.close < prevCandle.close) {
+          trendDirection = 'bearish';
+          trendIcon = '📉';
+          trendColor = '#ef5350';
+          bearishTimeframes++;
+        }
+        
+        // Volume analysis
+        let volumeIcon = '🔈';
+        if (lastCandle.volume > tfData.slice(-10).reduce((a, c) => a + c.volume, 0) / 10 * 1.5) {
+          volumeIcon = '🔊';
+        } else if (lastCandle.volume < tfData.slice(-10).reduce((a, c) => a + c.volume, 0) / 10 * 0.7) {
+          volumeIcon = '🔇';
+        }
+        
+        html += `
+          <div class="timeframe-analysis-item">
+            <div class="timeframe-label">${tf} Timeframe</div>
+            <div class="timeframe-signal">
+              <span class="signal-icon" style="color: ${trendColor}">${trendIcon}</span>
+              <span>${trendDirection}</span>
+              <span class="signal-icon">${volumeIcon}</span>
+              <span>${(lastCandle.volume / 1000).toFixed(1)}k</span>
+            </div>
+          </div>
+        `;
+      });
+      
+      // Update secondary trend condition
+      const condition = launchConditions.find(c => c.id === 'secondary-trend');
+      if (condition) {
+        condition.met = bullishTimeframes >= 2 || bearishTimeframes >= 2;
+        updateLaunchConditionsDisplay();
+      }
+      
+      document.getElementById('tf-analysis-results').innerHTML = html;
+    }
+
+    // Trend analysis
+    function analyzeTrend(timeframe) {
+      const tfData = candles[timeframe];
+      const sma20 = calculateSMA(tfData, 20);
+      const sma50 = calculateSMA(tfData, 50);
+      
+      const lastClose = tfData[tfData.length - 1].close;
+      const prevClose = tfData[tfData.length - 2].close;
+      
+      if (lastClose > sma20[sma20.length - 1] && lastClose > sma50[sma50.length - 1]) {
+        trend = 'bullish';
+        document.getElementById('trend-alert').innerHTML = 
+          `<div class="alert success">✅ ${timeframe} Bullish Trend Confirmed (Price above SMAs)</div>`;
+          
+        // Update trend condition
+        const condition = launchConditions.find(c => c.id === 'trend-confirmed');
+        if (condition) {
+          condition.met = true;
+          updateLaunchConditionsDisplay();
+        }
+      } else if (lastClose < sma20[sma20.length - 1] && lastClose < sma50[sma50.length - 1]) {
+        trend = 'bearish';
+        document.getElementById('trend-alert').innerHTML = 
+          `<div class="alert danger">✅ ${timeframe} Bearish Trend Confirmed (Price below SMAs)</div>`;
+          
+        // Update trend condition
+        const condition = launchConditions.find(c => c.id === 'trend-confirmed');
+        if (condition) {
+          condition.met = true;
+          updateLaunchConditionsDisplay();
+        }
+      } else {
+        trend = 'neutral';
+        document.getElementById('trend-alert').innerHTML = 
+          `<div class="alert">${timeframe} Range-bound Market (No clear trend)</div>`;
+          
+        // Update trend condition
+        const condition = launchConditions.find(c => c.id === 'trend-confirmed');
+        if (condition) {
+          condition.met = false;
+          updateLaunchConditionsDisplay();
+        }
+      }
+      
+      document.getElementById('step1').classList.add('completed');
+    }
+
+    // Find key support/resistance levels
+    function findKeyLevels(timeframe) {
+      const tfData = candles[timeframe];
+      const levels = [];
+      
+      // Simple swing point detection
+      for (let i = 2; i < tfData.length - 2; i++) {
+        const prev2 = tfData[i - 2];
+        const prev1 = tfData[i - 1];
+        const curr = tfData[i];
+        const next1 = tfData[i + 1];
+        const next2 = tfData[i + 2];
+        
+        // Support
+        if (curr.low < prev1.low && curr.low < next1.low && 
+            curr.low < prev2.low && curr.low < next2.low) {
+          levels.push({
+            price: curr.low,
+            type: 'support',
+            time: curr.time
+          });
+        }
+        
+        // Resistance
+        if (curr.high > prev1.high && curr.high > next1.high && 
+            curr.high > prev2.high && curr.high > next2.high) {
+          levels.push({
+            price: curr.high,
+            type: 'resistance',
+            time: curr.time
+          });
+        }
+      }
+      
+      // Filter nearby levels
+      keyLevels = levels.filter((level, index) => {
+        // Check if there's another level within 1% price range
+        const hasCloseLevel = levels.some((l, i) => 
+          i !== index && Math.abs(l.price - level.price) < level.price * 0.01
+        );
+        
+        return !hasCloseLevel;
+      });
+      
+      // Update key levels condition
+      const condition = launchConditions.find(c => c.id === 'key-levels');
+      if (condition) {
+        condition.met = keyLevels.length > 0;
+        updateLaunchConditionsDisplay();
+      }
+      
+      document.getElementById('levels-alert').innerHTML = 
+        `<div class="alert success">✅ Found ${keyLevels.length} key levels on ${timeframe}</div>`;
+      document.getElementById('step2').classList.add('completed');
+    }
+
+    // Detect break of structure
+    function detectStructureBreaks(timeframe) {
+      const tfData = candles[timeframe];
+      // Look at last 5 candles for breaks
+      const recentCandles = tfData.slice(-5);
+      
+      // Clear previous potential trades
+      potentialTrades = [];
+      
+      // Check for breaks near key levels
+      keyLevels.forEach(level => {
+        // Check if price has crossed this level recently
+        for (let i = 0; i < recentCandles.length; i++) {
+          const candle = recentCandles[i];
+          const distance = Math.abs(candle.close - level.price) / level.price;
+          
+          if (distance < 0.005) { // 0.5% from level
+            if (level.type === 'resistance' && candle.close > level.price) {
+              potentialTrades.push({
+                type: 'long',
+                level: level.price,
+                time: candle.time,
+                candleIndex: tfData.indexOf(candle),
+                timeframe: timeframe
+              });
+            } else if (level.type === 'support' && candle.close < level.price) {
+              potentialTrades.push({
+                type: 'short',
+                level: level.price,
+                time: candle.time,
+                candleIndex: tfData.indexOf(candle),
+                timeframe: timeframe
+              });
+            }
+          }
+        }
+      });
+      
+      // Update structure break condition
+      const condition = launchConditions.find(c => c.id === 'structure-break');
+      if (condition) {
+        condition.met = potentialTrades.length > 0;
+        updateLaunchConditionsDisplay();
+      }
+      
+      if (potentialTrades.length > 0) {
+        const trade = potentialTrades[0];
+        document.getElementById('bos-alert').innerHTML = 
+          `<div class="alert success">✅ Potential ${trade.type} setup detected on ${timeframe}</div>`;
+        document.getElementById('step3').classList.add('completed');
+        
+        // Check for retest
+        checkRetest(timeframe);
+      } else {
+        document.getElementById('bos-alert').innerHTML = 
+          `<div class="alert">No break of structure detected on ${timeframe}</div>`;
+      }
+    }
+
+    // Check for retest of broken level
+    function checkRetest(timeframe) {
+      if (potentialTrades.length === 0) return;
+      
+      const tfData = candles[timeframe];
+      const trade = potentialTrades.find(t => t.timeframe === timeframe);
+      if (!trade) return;
+      
+      const breakCandle = tfData[trade.candleIndex];
+      const recentCandles = tfData.slice(trade.candleIndex + 1);
+      
+      for (let i = 0; i < recentCandles.length; i++) {
+        const candle = recentCandles[i];
+        
+        // For long trades, look for retest of resistance-turned-support
+        if (trade.type === 'long' && candle.low <= trade.level && candle.close > trade.level) {
+          document.getElementById('entry-alert').innerHTML = `
+            <div class="alert success">
+              ✅ Retest confirmed on ${timeframe}!<br>
+              Entry: Above ${trade.level.toFixed(2)}<br>
+              Stop Loss: ${(trade.level * 0.99).toFixed(2)} (1% below)<br>
+              Take Profit: ${(trade.level * 1.02).toFixed(2)} (1:2 RR)
+            </div>
+          `;
+          
+          // Update retest condition
+          const condition = launchConditions.find(c => c.id === 'retest-confirmed');
+          if (condition) {
+            condition.met = true;
+            updateLaunchConditionsDisplay();
+          }
+          
+          document.getElementById('step4').classList.add('completed');
+          return;
+        }
+        
+        // For short trades, look for retest of support-turned-resistance
+        if (trade.type === 'short' && candle.high >= trade.level && candle.close < trade.level) {
+          document.getElementById('entry-alert').innerHTML = `
+            <div class="alert success">
+              ✅ Retest confirmed on ${timeframe}!<br>
+              Entry: Below ${trade.level.toFixed(2)}<br>
+              Stop Loss: ${(trade.level * 1.01).toFixed(2)} (1% above)<br>
+              Take Profit: ${(trade.level * 0.98).toFixed(2)} (1:2 RR)
+            </div>
+          `;
+          
+          // Update retest condition
+          const condition = launchConditions.find(c => c.id === 'retest-confirmed');
+          if (condition) {
+            condition.met = true;
+            updateLaunchConditionsDisplay();
+          }
+          
+          document.getElementById('step4').classList.add('completed');
+          return;
+        }
+      }
+      
+      // Update retest condition
+      const condition = launchConditions.find(c => c.id === 'retest-confirmed');
+      if (condition) {
+        condition.met = false;
+        updateLaunchConditionsDisplay();
+      }
+      
+      document.getElementById('entry-alert').innerHTML = `
+        <div class="alert">
+          Waiting for retest confirmation on ${timeframe}...
+        </div>
+      `;
+    }
+
+    // Calculate SMA
+    function calculateSMA(data, period) {
+      const sma = [];
+      for (let i = period - 1; i < data.length; i++) {
+        let sum = 0;
+        for (let j = 0; j < period; j++) {
+          sum += data[i - j].close;
+        }
+        sma.push(sum / period);
+      }
+      return sma;
+    }
+
+    // Update UI steps
+    function updateStepUI() {
+      const steps = document.querySelectorAll('.step');
+      steps.forEach(step => {
+        step.classList.remove('active');
+      });
+      
+      if (potentialTrades.length > 0) {
+        document.getElementById('step4').classList.add('active');
+      }
+      
+      if (document.querySelectorAll('.checklist-item input:checked').length === 3) {
+        document.getElementById('step5').classList.add('completed');
+      }
+    }
+
+    // Risk calculator
+    document.getElementById('calculate-btn').addEventListener('click', function() {
+      const accountSize = parseFloat(document.getElementById('account-size').value);
+      const riskPercent = parseFloat(document.getElementById('risk-percent').value);
+      
+      if (potentialTrades.length > 0) {
+        const trade = potentialTrades[0];
+        const slDistance = trade.type === 'long' ? 
+          trade.level - (trade.level * 0.99) : 
+          (trade.level * 1.01) - trade.level;
+        
+        const riskAmount = accountSize * (riskPercent / 100);
+        const positionSize = riskAmount / slDistance;
+        
+        document.getElementById('sl-distance').textContent = slDistance.toFixed(2);
+        document.getElementById('position-size').textContent = positionSize.toFixed(6);
+        
+        document.getElementById('risk1').checked = true;
+        document.getElementById('risk2').checked = true;
+        document.getElementById('risk3').checked = true;
+        document.getElementById('step5').classList.add('completed');
+        
+        // Update risk calculated condition
+        const condition = launchConditions.find(c => c.id === 'risk-calculated');
+        if (condition) {
+          condition.met = true;
+          updateLaunchConditionsDisplay();
+        }
+      } else {
+        alert('No trade setup detected yet');
+      }
+    });
+
+    // Launch sequence
+    function startLaunchSequence() {
+      clearInterval(countdownInterval);
+      
+      // Update confidence meter based on confidence checklist
+      const confidenceCheckboxes = document.querySelectorAll('.confidence-checklist-item input:checked');
+      const confidencePercentage = Math.min(100, 20 + (confidenceCheckboxes.length * 16)); // Each checkbox adds 16%
+      confidence = confidencePercentage;
+      
+      document.getElementById('confidence-fill').style.width = `${confidence}%`;
+      
+      // Update confidence condition
+      const confidenceCondition = launchConditions.find(c => c.id === 'confidence-level');
+      if (confidenceCondition) {
+        confidenceCondition.met = confidence >= 70;
+        updateLaunchConditionsDisplay();
+      }
+      
+      // Update countdown message based on conditions
+      updateCountdownMessage();
+      
+      const allConditionsMet = launchConditions.every(c => c.met);
+      const allCheckboxesChecked = document.querySelectorAll('.checklist-item input:checked').length === 3;
+      
+      if (!(allConditionsMet && allCheckboxesChecked)) {
+        return;
+      }
+      
+      // Start countdown if all conditions are met
+      countdown = 5;
+      countdownInterval = setInterval(() => {
+        countdown--;
+        updateCountdownMessage();
+        
+        if (countdown <= 0) {
+          clearInterval(countdownInterval);
+        }
+      }, 1000);
+    }
+
+    // Execute trade button
+    document.getElementById('execute-btn').addEventListener('click', function() {
+      if (potentialTrades.length > 0) {
+        const trade = potentialTrades[0];
+        const accountSize = parseFloat(document.getElementById('account-size').value);
+        const riskPercent = parseFloat(document.getElementById('risk-percent').value);
+        const positionSize = parseFloat(document.getElementById('position-size').textContent);
+        
+        const entryPrice = trade.type === 'long' ? trade.level * 1.001 : trade.level * 0.999;
+        const stopLoss = trade.type === 'long' ? trade.level * 0.99 : trade.level * 1.01;
+        const takeProfit = trade.type === 'long' ? trade.level * 1.02 : trade.level * 0.98;
+        const riskAmount = accountSize * (riskPercent / 100);
+        
+        // Create new trade
+        const newTrade = {
+          id: Date.now(),
+          type: trade.type,
+          timeframe: trade.timeframe,
+          entryPrice: entryPrice,
+          stopLoss: stopLoss,
+          takeProfit: takeProfit,
+          positionSize: positionSize,
+          riskAmount: riskAmount,
+          potentialReward: riskAmount * 2,
+          status: 'active',
+          entryTime: new Date().toISOString(),
+          currentPrice: entryPrice,
+          profitLoss: 0,
+          profitLossPercent: 0
+        };
+        
+        activeTrade = newTrade;
+        tradeHistory.unshift(newTrade);
+        updateTradeHistoryDisplay();
+        updatePerformanceMetrics();
+        saveTradesToStorage();
+        
+        alert(`Trade Executed!\n\nType: ${trade.type.toUpperCase()}\nTimeframe: ${trade.timeframe}\nEntry: ${entryPrice.toFixed(2)}\nStop Loss: ${stopLoss.toFixed(2)}\nTake Profit: ${takeProfit.toFixed(2)}\nPosition Size: ${positionSize.toFixed(6)} BTC`);
+      }
+    });
+
+    // Update active trade performance
+    function updateActiveTradePerformance() {
+      if (!activeTrade || !lastPrice) return;
+      
+      activeTrade.currentPrice = lastPrice;
+      
+      if (activeTrade.type === 'long') {
+        activeTrade.profitLoss = (lastPrice - activeTrade.entryPrice) * activeTrade.positionSize;
+      } else {
+        activeTrade.profitLoss = (activeTrade.entryPrice - lastPrice) * activeTrade.positionSize;
+      }
+      
+      activeTrade.profitLossPercent = (activeTrade.profitLoss / activeTrade.riskAmount) * 100;
+      
+      // Check if trade should be closed
+      if ((activeTrade.type === 'long' && lastPrice <= activeTrade.stopLoss) || 
+          (activeTrade.type === 'short' && lastPrice >= activeTrade.stopLoss)) {
+        activeTrade.status = 'stopped';
+        activeTrade.exitPrice = activeTrade.stopLoss;
+        activeTrade.exitTime = new Date().toISOString();
+        activeTrade.profitLoss = (activeTrade.exitPrice - activeTrade.entryPrice) * activeTrade.positionSize * (activeTrade.type === 'long' ? 1 : -1);
+        activeTrade.profitLossPercent = (activeTrade.profitLoss / activeTrade.riskAmount) * 100;
+        activeTrade = null;
+      } else if ((activeTrade.type === 'long' && lastPrice >= activeTrade.takeProfit) || 
+                 (activeTrade.type === 'short' && lastPrice <= activeTrade.takeProfit)) {
+        activeTrade.status = 'target';
+        activeTrade.exitPrice = activeTrade.takeProfit;
+        activeTrade.exitTime = new Date().toISOString();
+        activeTrade.profitLoss = (activeTrade.exitPrice - activeTrade.entryPrice) * activeTrade.positionSize * (activeTrade.type === 'long' ? 1 : -1);
+        activeTrade.profitLossPercent = (activeTrade.profitLoss / activeTrade.riskAmount) * 100;
+        activeTrade = null;
+      }
+      
+      updateTradeHistoryDisplay();
+      updatePerformanceMetrics();
+      saveTradesToStorage();
+    }
+
+    // Update trade history display
+    function updateTradeHistoryDisplay() {
+      const container = document.getElementById('trade-list');
+      container.innerHTML = '';
+      
+      if (tradeHistory.length === 0) {
+        container.innerHTML = '<p>No trades yet</p>';
+        return;
+      }
+      
+      tradeHistory.forEach(trade => {
+        const tradeEl = document.createElement('div');
+        tradeEl.className = `trade-item ${trade.status === 'target' ? 'success' : trade.status === 'stopped' ? 'danger' : ''}`;
+        
+        const profitLossClass = trade.profitLoss >= 0 ? 'positive-value' : 'negative-value';
+        const profitLossSign = trade.profitLoss >= 0 ? '+' : '';
+        const exitPriceDisplay = trade.exitPrice ? `$${trade.exitPrice.toFixed(2)}` : 'N/A';
+        
+        tradeEl.innerHTML = `
+          <div class="trade-header">
+            <span>${trade.type.toUpperCase()} (${trade.timeframe})</span>
+            <span class="${profitLossClass}">${profitLossSign}$${Math.abs(trade.profitLoss).toFixed(2)} (${profitLossSign}${trade.profitLossPercent.toFixed(1)}%)</span>
+          </div>
+          <div class="trade-details">
+            <div class="trade-metric">
+              <span class="label">Entry:</span>
+              <span class="value">$${trade.entryPrice.toFixed(2)}</span>
+            </div>
+            <div class="trade-metric">
+              <span class="label">${trade.status === 'active' ? 'Current' : 'Exit'}:</span>
+              <span class="value">${trade.status === 'active' ? `$${trade.currentPrice.toFixed(2)}` : exitPriceDisplay}</span>
+            </div>
+            <div class="trade-metric">
+              <span class="label">Stop:</span>
+              <span class="value">$${trade.stopLoss.toFixed(2)}</span>
+            </div>
+            <div class="trade-metric">
+              <span class="label">Target:</span>
+              <span class="value">$${trade.takeProfit.toFixed(2)}</span>
+            </div>
+            <div class="trade-metric">
+              <span class="label">Size:</span>
+              <span class="value">${trade.positionSize.toFixed(6)} BTC</span>
+            </div>
+            <div class="trade-metric">
+              <span class="label">Risk:</span>
+              <span class="value">$${trade.riskAmount.toFixed(2)}</span>
+            </div>
+          </div>
+          <div class="action-buttons">
+            <button class="secondary edit-trade" data-id="${trade.id}">Edit</button>
+          </div>
+        `;
+        
+        container.appendChild(tradeEl);
+      });
+      
+      // Add event listeners to edit buttons
+      document.querySelectorAll('.edit-trade').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const tradeId = parseInt(this.dataset.id);
+          editTrade(tradeId);
+        });
+      });
+    }
+
+    // Update performance metrics
+    function updatePerformanceMetrics() {
+      let activePl = 0;
+      let completedPl = 0;
+      let totalPl = 0;
+      let winCount = 0;
+      let totalCompleted = 0;
+      
+      tradeHistory.forEach(trade => {
+        if (trade.status === 'active') {
+          activePl += trade.profitLoss;
+        } else {
+          completedPl += trade.profitLoss;
+          totalCompleted++;
+          if (trade.profitLoss > 0) winCount++;
+        }
+      });
+      
+      totalPl = activePl + completedPl;
+      
+      // Calculate percentages based on total risk amount
+      const totalRisk = tradeHistory.reduce((sum, trade) => sum + trade.riskAmount, 0);
+      const activePlPercent = totalRisk > 0 ? (activePl / totalRisk) * 100 : 0;
+      const completedPlPercent = totalRisk > 0 ? (completedPl / totalRisk) * 100 : 0;
+      const totalPlPercent = totalRisk > 0 ? (totalPl / totalRisk) * 100 : 0;
+      const winRate = totalCompleted > 0 ? (winCount / totalCompleted) * 100 : 0;
+      
+      // Update display
+      document.getElementById('active-pl').textContent = `$${activePl.toFixed(2)}`;
+      document.getElementById('active-pl-percent').textContent = `${activePlPercent.toFixed(1)}%`;
+      document.getElementById('completed-pl').textContent = `$${completedPl.toFixed(2)}`;
+      document.getElementById('completed-pl-percent').textContent = `${completedPlPercent.toFixed(1)}%`;
+      document.getElementById('total-pl').textContent = `$${totalPl.toFixed(2)}`;
+      document.getElementById('total-pl-percent').textContent = `${totalPlPercent.toFixed(1)}%`;
+      document.getElementById('win-rate').textContent = `${winRate.toFixed(1)}%`;
+      
+      // Color coding
+      const colorClass = (value) => value >= 0 ? 'positive-value' : 'negative-value';
+      
+      document.getElementById('active-pl').className = `metric-value ${colorClass(activePl)}`;
+      document.getElementById('active-pl-percent').className = `metric-value ${colorClass(activePlPercent)}`;
+      document.getElementById('completed-pl').className = `metric-value ${colorClass(completedPl)}`;
+      document.getElementById('completed-pl-percent').className = `metric-value ${colorClass(completedPlPercent)}`;
+      document.getElementById('total-pl').className = `metric-value ${colorClass(totalPl)}`;
+      document.getElementById('total-pl-percent').className = `metric-value ${colorClass(totalPlPercent)}`;
+      document.getElementById('win-rate').className = `metric-value ${colorClass(winRate - 50)}`; // Green if >50%
+    }
+
+    // Open modal to add/edit trade
+    function openTradeModal(editMode = false) {
+      const modal = document.getElementById('trade-modal');
+      const modalTitle = document.getElementById('modal-title');
+      const deleteBtn = document.getElementById('delete-trade-btn');
+      
+      if (editMode) {
+        modalTitle.textContent = 'Edit Trade';
+        deleteBtn.style.display = 'block';
+      } else {
+        modalTitle.textContent = 'Add External Trade';
+        deleteBtn.style.display = 'none';
+        
+        // Set default values for new trade
+        document.getElementById('trade-type').value = 'long';
+        document.getElementById('trade-timeframe').value = '1d';
+        document.getElementById('entry-price').value = '';
+        document.getElementById('exit-price').value = '';
+        document.getElementById('position-size-input').value = '';
+        document.getElementById('stop-loss').value = '';
+        document.getElementById('take-profit').value = '';
+        document.getElementById('entry-time').value = new Date().toISOString().slice(0, 16);
+        document.getElementById('exit-time').value = new Date().toISOString().slice(0, 16);
+        document.getElementById('trade-status').value = 'active';
+      }
+      
+      modal.style.display = 'flex';
+    }
+
+    // Edit existing trade
+    function editTrade(tradeId) {
+      const trade = tradeHistory.find(t => t.id === tradeId);
+      if (!trade) return;
+      
+      editingTradeId = tradeId;
+      
+      document.getElementById('trade-type').value = trade.type;
+      document.getElementById('trade-timeframe').value = trade.timeframe;
+      document.getElementById('entry-price').value = trade.entryPrice.toFixed(2);
+      document.getElementById('exit-price').value = trade.exitPrice ? trade.exitPrice.toFixed(2) : '';
+      document.getElementById('position-size-input').value = trade.positionSize;
+      document.getElementById('stop-loss').value = trade.stopLoss.toFixed(2);
+      document.getElementById('take-profit').value = trade.takeProfit.toFixed(2);
+      document.getElementById('entry-time').value = trade.entryTime ? trade.entryTime.slice(0, 16) : new Date().toISOString().slice(0, 16);
+      document.getElementById('exit-time').value = trade.exitTime ? trade.exitTime.slice(0, 16) : new Date().toISOString().slice(0, 16);
+      document.getElementById('trade-status').value = trade.status;
+      
+      openTradeModal(true);
+    }
+
+    // Save trade (new or edited)
+    function saveTrade() {
+      const type = document.getElementById('trade-type').value;
+      const timeframe = document.getElementById('trade-timeframe').value;
+      const entryPrice = parseFloat(document.getElementById('entry-price').value);
+      const exitPrice = parseFloat(document.getElementById('exit-price').value) || 0;
+      const positionSize = parseFloat(document.getElementById('position-size-input').value);
+      const stopLoss = parseFloat(document.getElementById('stop-loss').value);
+      const takeProfit = parseFloat(document.getElementById('take-profit').value);
+      const entryTime = document.getElementById('entry-time').value;
+      const exitTime = document.getElementById('exit-time').value;
+      const status = document.getElementById('trade-status').value;
+      
+      if (!entryPrice || !positionSize || !stopLoss || !takeProfit) {
+        alert('Please fill in all required fields');
+        return;
+      }
+      
+      const riskAmount = Math.abs(entryPrice - stopLoss) * positionSize;
+      
+      if (editingTradeId) {
+        // Update existing trade
+        const tradeIndex = tradeHistory.findIndex(t => t.id === editingTradeId);
+        if (tradeIndex !== -1) {
+          tradeHistory[tradeIndex] = {
+            ...tradeHistory[tradeIndex],
+            type,
+            timeframe,
+            entryPrice,
+            exitPrice: status !== 'active' ? exitPrice : undefined,
+            positionSize,
+            stopLoss,
+            takeProfit,
+            riskAmount,
+            potentialReward: Math.abs(takeProfit - entryPrice) * positionSize,
+            status,
+            entryTime: new Date(entryTime).toISOString(),
+            exitTime: status !== 'active' ? new Date(exitTime).toISOString() : undefined,
+            currentPrice: status === 'active' ? lastPrice || entryPrice : exitPrice,
+            profitLoss: status === 'active' ? 
+              (type === 'long' ? (lastPrice - entryPrice) : (entryPrice - lastPrice)) * positionSize :
+              (type === 'long' ? (exitPrice - entryPrice) : (entryPrice - exitPrice)) * positionSize,
+            profitLossPercent: status === 'active' ?
+              ((type === 'long' ? (lastPrice - entryPrice) : (entryPrice - lastPrice)) * positionSize / riskAmount) * 100 :
+              ((type === 'long' ? (exitPrice - entryPrice) : (entryPrice - exitPrice)) * positionSize / riskAmount) * 100
+          };
+          
+          if (status === 'active') {
+            activeTrade = tradeHistory[tradeIndex];
+          } else if (activeTrade && activeTrade.id === editingTradeId) {
+            activeTrade = null;
+          }
+        }
+      } else {
+        // Create new trade
+        const newTrade = {
+          id: Date.now(),
+          type,
+          timeframe,
+          entryPrice,
+          exitPrice: status !== 'active' ? exitPrice : undefined,
+          positionSize,
+          stopLoss,
+          takeProfit,
+          riskAmount,
+          potentialReward: Math.abs(takeProfit - entryPrice) * positionSize,
+          status,
+          entryTime: new Date(entryTime).toISOString(),
+          exitTime: status !== 'active' ? new Date(exitTime).toISOString() : undefined,
+          currentPrice: status === 'active' ? lastPrice || entryPrice : exitPrice,
+          profitLoss: status === 'active' ? 
+            (type === 'long' ? (lastPrice - entryPrice) : (entryPrice - lastPrice)) * positionSize :
+            (type === 'long' ? (exitPrice - entryPrice) : (entryPrice - exitPrice)) * positionSize,
+          profitLossPercent: status === 'active' ?
+            ((type === 'long' ? (lastPrice - entryPrice) : (entryPrice - lastPrice)) * positionSize / riskAmount) * 100 :
+            ((type === 'long' ? (exitPrice - entryPrice) : (entryPrice - exitPrice)) * positionSize / riskAmount) * 100
+        };
+        
+        tradeHistory.unshift(newTrade);
+        if (status === 'active') {
+          activeTrade = newTrade;
+        }
+      }
+      
+      updateTradeHistoryDisplay();
+      updatePerformanceMetrics();
+      saveTradesToStorage();
+      closeModal();
+      editingTradeId = null;
+    }
+
+    // Delete trade
+    function deleteTrade() {
+      if (!editingTradeId) return;
+      
+      const tradeIndex = tradeHistory.findIndex(t => t.id === editingTradeId);
+      if (tradeIndex !== -1) {
+        if (activeTrade && activeTrade.id === editingTradeId) {
+          activeTrade = null;
+        }
+        tradeHistory.splice(tradeIndex, 1);
+        updateTradeHistoryDisplay();
+        updatePerformanceMetrics();
+        saveTradesToStorage();
+      }
+      
+      closeModal();
+      editingTradeId = null;
+    }
+
+    // Close modal
+    function closeModal() {
+      document.getElementById('trade-modal').style.display = 'none';
+    }
+
+    // Update confidence when checkboxes are clicked
+    document.querySelectorAll('.checklist-item input').forEach(checkbox => {
+      checkbox.addEventListener('change', function() {
+        // Update risk calculated condition when all checkboxes are checked
+        if (document.querySelectorAll('.checklist-item input:checked').length === 3) {
+          const condition = launchConditions.find(c => c.id === 'risk-calculated');
+          if (condition) {
+            condition.met = true;
+          }
+          document.getElementById('step5').classList.add('completed');
+        } else {
+          const condition = launchConditions.find(c => c.id === 'risk-calculated');
+          if (condition) {
+            condition.met = false;
+          }
+          document.getElementById('step5').classList.remove('completed');
+        }
+        
+        updateLaunchConditionsDisplay();
+        startLaunchSequence();
+      });
+    });
+
+    // Update confidence when confidence checkboxes are clicked
+    document.querySelectorAll('.confidence-checklist-item input').forEach(checkbox => {
+      checkbox.addEventListener('change', function() {
+        startLaunchSequence();
+      });
+    });
+
+    // Connect to WebSocket for live price updates
+    function connectWebSocket() {
+      ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@ticker');
+      
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        const price = parseFloat(data.c);
+        const change = parseFloat(data.P);
+        
+        // Update price display
+        document.getElementById('live-price').textContent = `$${price.toFixed(2)}`;
+        
+        // Update price change
+        const liveChangeElement = document.getElementById('live-change');
+        if (change >= 0) {
+          liveChangeElement.textContent = `+${change.toFixed(2)}% (24h)`;
+          liveChangeElement.className = 'positive';
+        } else {
+          liveChangeElement.textContent = `${change.toFixed(2)}% (24h)`;
+          liveChangeElement.className = 'negative';
+        }
+        
+        // Price direction indicator
+        if (price > lastPrice) {
+          document.getElementById('live-price-container').style.border = '1px solid #26a69a';
+        } else if (price < lastPrice) {
+          document.getElementById('live-price-container').style.border = '1px solid #ef5350';
+        }
+        lastPrice = price;
+        
+        // Update active trade if exists
+        if (activeTrade) {
+          updateActiveTradePerformance();
+        }
+        
+        // Add subtle pulse animation when price updates
+        const livePriceContainer = document.getElementById('live-price-container');
+        livePriceContainer.classList.remove('pulse');
+        void livePriceContainer.offsetWidth; // Trigger reflow
+        livePriceContainer.classList.add('pulse');
+      };
+      
+      ws.onclose = () => {
+        setTimeout(connectWebSocket, 1000);
+      };
+    }
+    
+    // Modal event listeners
+    document.getElementById('add-trade-btn').addEventListener('click', () => openTradeModal(false));
+    document.getElementById('save-trade-btn').addEventListener('click', saveTrade);
+    document.getElementById('delete-trade-btn').addEventListener('click', deleteTrade);
+    document.querySelector('.close-modal').addEventListener('click', closeModal);
+    
+    // Close modal when clicking outside
+    document.getElementById('trade-modal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('trade-modal')) {
+        closeModal();
+      }
+    });
+    
+    // Initialize
+    initializeLaunchConditions();
+    loadTradesFromStorage();
+    loadData(currentTimeframe);
+    connectWebSocket();
+  </script>
+</body>
+</html>
